@@ -98,6 +98,15 @@ public class TagPlayer extends MovingEntity implements TagGameListener {
         return arena;
     }
 
+    void setName(String name) {
+        this.name = name;
+    }
+
+
+    String getName() {
+        return name;
+    }
+
     boolean isTagged() {
         return isTagged;
     }

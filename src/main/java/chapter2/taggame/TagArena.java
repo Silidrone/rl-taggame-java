@@ -2,6 +2,10 @@ package chapter2.taggame;
 
 
 import chapter2.MovementPanel;
+import math.geom2d.Point2D;
+import math.geom2d.Vector2D;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.SlickException;
@@ -90,7 +94,6 @@ public class TagArena extends MovementPanel {
                 break;
             }
         }
-
     }
 
     private void setTag(TagPlayer oldTag, TagPlayer newTag) {
@@ -98,6 +101,38 @@ public class TagArena extends MovementPanel {
         state = TagGameState.WarmUp;
         tagChangeTime = System.currentTimeMillis();
         players.forEach((p) -> p.tagChanged(oldTag, tagPlayer));
-        players.forEach((p) -> System.out.println(p.name + " : " + p.positiveTagCount));
     }
+
+    private Point2D toPoint(Vector2D v) {
+        return new Point2D(v.x(), v.y());
+    }
+
+    private int[] toIntArray(Point2D point) {
+        return new int[]{
+                (int) point.x(),
+                (int) point.y()
+        };
+    }
+
+    public String getGameStateAsString(TagPlayer me) {
+        JSONObject gameState = new JSONObject();
+
+        gameState.put("myVelocity", toIntArray(toPoint(me.getVelocity())));
+        gameState.put("taggedVelocity", toIntArray(toPoint(tagPlayer.getVelocity())));
+
+        Point2D myPosition = me.getStaticInfo().getPos();
+        Point2D taggedPosition = tagPlayer.getStaticInfo().getPos();
+
+        int[] relativePosition = me.isTagged() ?
+                new int[]{0, 0} :
+                toIntArray(new Point2D(
+                        taggedPosition.getX() - myPosition.getX(),
+                        taggedPosition.getY() - myPosition.getY()
+                ));
+
+        gameState.put("relativePosition", relativePosition);
+
+        return gameState.toString();
+    }
+
 }
