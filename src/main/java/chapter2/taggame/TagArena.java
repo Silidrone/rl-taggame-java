@@ -4,62 +4,95 @@ import chapter2.*;
 import math.geom2d.Point2D;
 import org.json.JSONObject;
 import org.newdawn.slick.GameContainer;
+import org.newdawn.slick.Graphics;
 import org.newdawn.slick.SlickException;
+import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 import org.newdawn.slick.Color;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
-public class TagArena extends MovementPanel {
-    private static final int PLAYER_COUNT = 5;
+public class TagArena extends BasicGameState {
+    private static final Color PanelColor = Color.decode("#222222");
+    private static final int PLAYER_COUNT = 15;
+    private static final double TAGGER_SLEEP_TIME_MS = 3000;
+    private final String RL_PLAYER_NAME = "Sili";
+    private final Color RL_PLAYER_COLOR = Color.blue;
 
     private List<TagPlayer> players;
     private TagPlayer tagPlayer;
     private TagPlayer oldTagPlayer;
     private Communicator communicator;
-    private int RL_PLAYER_INDEX = 0;
-    private String RL_PLAYER_NAME = "Sili";
+    private final int RL_PLAYER_INDEX = 0;
+    private double tagChangedTime;
+    private boolean tagPlayerIdle;
+    private int width;
+    private int height;
 
-    public TagArena() {
+    public TagArena(int width, int height) {
         super();
         this.players = new ArrayList<>();
         this.oldTagPlayer = null;
+        this.tagChangedTime = 0;
+        this.tagPlayerIdle = false;
+        this.width = width;
+        this.height = height;
     }
 
-    private void resetGame(GameContainer gameContainer, StateBasedGame stateBasedGame, int playerCount) throws SlickException {
-        players.clear();
-        removeAllEntities();
-        Random rand = new Random();
-        Color[] colors = {Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.orange, Color.pink};
+    @Override
+    public int getID() {
+        return 0;
+    }
 
-        for (int i = 0; i < playerCount; i++) {
+    private void initGame() {
+        players.clear();
+        Random rand = new Random();
+        ArrayList<Color> colors = new ArrayList<>(Arrays.asList(Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.orange, Color.pink));
+        colors = colors.stream().filter(color -> color != RL_PLAYER_COLOR).collect(Collectors.toCollection(ArrayList::new));
+
+        for (int i = 0; i < PLAYER_COUNT; i++) {
             TagPlayer player = new TagPlayer(
                     i == RL_PLAYER_INDEX ? RL_PLAYER_NAME : ("P" + (i + 1)),
                     new StaticInfo(new Point2D(rand.nextDouble() * (TagGame.DemoWidth - 200), rand.nextDouble() * (TagGame.DemoHeight - 200))),
-                    colors[i % colors.length],
+                    i == RL_PLAYER_INDEX ? RL_PLAYER_COLOR : colors.get(i % colors.size()),
                     this
             );
-            player.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, MovingEntity.MAX_VELOCITY, player));
+            player.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, TagGame.MAX_VELOCITY, player));
             players.add(player);
-            add(player);
         }
         TagPlayer taggedPlayer = players.get(Utils.randomInt(players.size()));
         setTag(taggedPlayer, taggedPlayer);
-        super.init(gameContainer, stateBasedGame);
     }
 
     @Override
     public void init(GameContainer gameContainer, StateBasedGame stateBasedGame) throws SlickException {
-        resetGame(gameContainer, stateBasedGame, PLAYER_COUNT);
+        initGame();
         try {
             communicator = new Communicator();
         } catch (IOException e) {
             throw new SlickException("Failed to initialize communicator.", e);
         }
-        gameContainer.setTargetFrameRate(20);
+        gameContainer.setTargetFrameRate(60);
+    }
+
+    @Override
+    public void render(GameContainer gameContainer, StateBasedGame stateBasedGame, Graphics graphics) throws SlickException {
+        graphics.clear();
+        graphics.setColor(PanelColor);
+        graphics.fillRect(0, 0, (float)width, (float)height);
+
+        graphics.translate(0, (float) height);
+        graphics.scale(1, -1);
+
+        players.forEach(e -> e.render(graphics));
+
+        graphics.scale(1, -1);
+        graphics.translate(0, (float) -height);
     }
 
     @Override
@@ -69,19 +102,25 @@ public class TagArena extends MovementPanel {
             if (action == null || action.equalsIgnoreCase(Communicator.EXIT)) return;
 
             if (action.equals(Communicator.RESET)) {
-                resetGame(gameContainer, stateBasedGame, PLAYER_COUNT);
+                initGame();
             } else {
-                TagGameAction gameAction = deserializeAction(action);
-                applyAction(players.get(RL_PLAYER_INDEX), gameAction);
+                applyAction(players.get(RL_PLAYER_INDEX), new TagGameAction(action));
             }
 
-            super.update(gameContainer, stateBasedGame, time);
-            boolean tagChanged = handleTaggingLogic();
+            if(tagPlayerIdle && tagChangedTime != 0 && (System.currentTimeMillis() - tagChangedTime >= TAGGER_SLEEP_TIME_MS)) {
+                tagPlayer.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, TagGame.MAX_VELOCITY, tagPlayer));
+                tagPlayerIdle = false;
+            }
+
+            for(TagPlayer player : players) {
+                player.update(gameContainer, stateBasedGame, time);
+            }
+
+            if(!tagPlayerIdle) {
+                handleTaggingLogic();
+            }
+
             sendSerializedGameState(players.get(RL_PLAYER_INDEX));
-
-            if(tagChanged) {
-                resetGame(gameContainer, stateBasedGame, PLAYER_COUNT);
-            }
         } catch (IOException e) {
             try {
                 communicator.close();
@@ -98,7 +137,6 @@ public class TagArena extends MovementPanel {
 
     private void applyAction(TagPlayer player, TagGameAction action) {
         System.out.println("Applying action: " + action);
-//        player.applyAction(action.rot, action.speed);
     }
 
     private void sendSerializedGameState(TagPlayer me) {
@@ -115,26 +153,19 @@ public class TagArena extends MovementPanel {
         gameState.put("tc", tagPlayer != oldTagPlayer);
 
         String newState = gameState.toString();
-        System.out.println("Sending new state: " + newState);
         communicator.sendState(newState);
     }
 
-    private TagGameAction deserializeAction(String s) {
-        JSONObject json = new JSONObject(s);
-        int angleDiff = json.getInt("a");
-        int speed = json.getInt("s");
-        return new TagGameAction(angleDiff, speed);
-    }
-
-    private boolean handleTaggingLogic() {
+    private void handleTaggingLogic() {
         for (TagPlayer player : players) {
             if (player != tagPlayer && tagPlayer.isTagging(player)) {
                 setTag(tagPlayer, player);
-                return true;
+                tagPlayer.setSteeringBehavior(TagPlayer.idleSteering);
+                tagChangedTime = System.currentTimeMillis();
+                tagPlayerIdle = true;
+                return;
             }
         }
-
-        return false;
     }
 
     private void setTag(TagPlayer oldPlayer, TagPlayer newPlayer) {

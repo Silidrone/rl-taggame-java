@@ -9,18 +9,16 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.stream.Collectors;
 
 public class DumbTagSteering implements SteeringBehaviour {
-    // parameters to my algorithm
     double safeDistanceThreshold = 0.2;
     double chasingCornerDistanceThreshold = 0.2;
     double cornerWeightMultiplier = 0.1;
     double chasingPrioritizationDotProduct = 0.9;
 
-    // corners
     List<Point2D> corners;
     TagPlayer me;
-    List<TagPlayer> otherPlayers;
     double maxVelocity;
 
     public DumbTagSteering(int DemoWidth, int DemoHeight, double maxVelocity, TagPlayer _me) {
@@ -37,9 +35,6 @@ public class DumbTagSteering implements SteeringBehaviour {
         this.maxVelocity = maxVelocity;
 
         me = _me;
-        otherPlayers = me.getArena().getPlayers().stream()
-                .filter(p -> p != me)
-                .toList();
     }
 
     @Override
@@ -47,6 +42,9 @@ public class DumbTagSteering implements SteeringBehaviour {
         Vector2D desiredVelocity = new Vector2D(0, 0);
         boolean isTagged = me.isTagged();
         Point2D myPosition = me.getStaticInfo().getPos();
+        ArrayList<TagPlayer> otherPlayers = me.getArena().getPlayers().stream()
+                .filter(p -> p != me)
+                .collect(Collectors.toCollection(ArrayList::new));
 
         if (isTagged) {
             // If the player is tagged, chase the closest opponent

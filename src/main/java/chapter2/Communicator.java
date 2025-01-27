@@ -34,7 +34,6 @@ public class Communicator {
 
     public void sendState(String state) {
         out.println(state);
-        System.out.println("Sent state: " + state);
     }
 
     public void close() throws IOException {

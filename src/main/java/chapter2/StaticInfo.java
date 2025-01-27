@@ -15,6 +15,7 @@ public class StaticInfo {
     public Point2D getPos() {
         return pos;
     }
+    public double getOrientation() { return orientation; }
 
     public void update(Vector2D velocity, float time)
     {
