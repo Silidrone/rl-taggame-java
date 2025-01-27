@@ -4,12 +4,7 @@ import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
 
 public class Ball extends BasicRenderable {
-    private final float DefaultRadius = 10;
-    float radius = DefaultRadius;
-
-    public Ball(Color color) {
-        super(color);
-    }
+    float radius;
 
     public Ball(Color color, float radius) {
         super(color);

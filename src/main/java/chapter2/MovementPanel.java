@@ -20,17 +20,13 @@ public class MovementPanel extends BasicGameState {
     public static final float FRAME_WIDTH = 30;
     private static final Color FrameColor = Color.black;
     private static final Color PanelColor = Color.darkGray;
-    private static final long WARMUPTIME = 5000;
+    private static final long WARMUPTIME = 50;
 
     long startTime;
 
     protected List<GameEntity> entities;
 
     protected double width;
-
-    public double getHeight() {
-        return height;
-    }
 
     protected double height;
 
@@ -118,7 +114,7 @@ public class MovementPanel extends BasicGameState {
         entities.add(entity);
     }
 
-    public double getWidth() {
-        return width;
+    public void removeAllEntities() {
+        entities.clear();
     }
 }

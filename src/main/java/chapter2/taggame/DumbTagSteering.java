@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.AbstractMap.SimpleEntry;
 
-public class DumbTagSteeringEngine implements TagSteeringEngine {
+public class DumbTagSteering implements SteeringBehaviour {
     // parameters to my algorithm
     double safeDistanceThreshold = 0.2;
     double chasingCornerDistanceThreshold = 0.2;
@@ -19,9 +19,11 @@ public class DumbTagSteeringEngine implements TagSteeringEngine {
 
     // corners
     List<Point2D> corners;
+    TagPlayer me;
+    List<TagPlayer> otherPlayers;
     double maxVelocity;
 
-    public DumbTagSteeringEngine(int DemoWidth, int DemoHeight, double maxVelocity) {
+    public DumbTagSteering(int DemoWidth, int DemoHeight, double maxVelocity, TagPlayer _me) {
         corners = new ArrayList<>() {{
             add(new Point2D(0, 0));
             add(new Point2D(0, DemoHeight));
@@ -33,18 +35,15 @@ public class DumbTagSteeringEngine implements TagSteeringEngine {
         chasingCornerDistanceThreshold *= bottomLeftTopRightDistance;
         cornerWeightMultiplier *= bottomLeftTopRightDistance;
         this.maxVelocity = maxVelocity;
+
+        me = _me;
+        otherPlayers = me.getArena().getPlayers().stream()
+                .filter(p -> p != me)
+                .toList();
     }
 
     @Override
-    public SteeringBehaviour getSteeringBehavior(TagPlayer me) {
-        List<TagPlayer> otherPlayers = me.getArena().getPlayers().stream()
-                .filter(p -> p != me)
-                .toList();
-
-        return (staticInfo, currentVelocity) -> getVelocity(staticInfo, currentVelocity, me, otherPlayers);
-    }
-
-    public Vector2D getVelocity(StaticInfo staticInfo, Vector2D currentVelocity, TagPlayer me, List<TagPlayer> otherPlayers) {
+    public Vector2D getVelocity(StaticInfo staticInfo, Vector2D currentVelocity) {
         Vector2D desiredVelocity = new Vector2D(0, 0);
         boolean isTagged = me.isTagged();
         Point2D myPosition = me.getStaticInfo().getPos();

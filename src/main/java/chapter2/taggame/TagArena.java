@@ -1,138 +1,145 @@
 package chapter2.taggame;
 
-
-import chapter2.MovementPanel;
+import chapter2.*;
 import math.geom2d.Point2D;
-import math.geom2d.Vector2D;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.state.StateBasedGame;
-import utils.RandomUtils;
+import org.newdawn.slick.Color;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class TagArena extends MovementPanel {
+    private static final int PLAYER_COUNT = 5;
 
-    private static final double SCOREBOARD_WIDTH = 100;
-    TagGameState state;
-
-    List<TagPlayer> players;
-
-    TagPlayer tagPlayer;
-
-
-    long tagChangeTime;
-    private long TagWarmUpTime = 3000;
+    private List<TagPlayer> players;
+    private TagPlayer tagPlayer;
+    private TagPlayer oldTagPlayer;
+    private Communicator communicator;
+    private int RL_PLAYER_INDEX = 0;
+    private String RL_PLAYER_NAME = "Sili";
 
     public TagArena() {
         super();
         this.players = new ArrayList<>();
+        this.oldTagPlayer = null;
+    }
+
+    private void resetGame(GameContainer gameContainer, StateBasedGame stateBasedGame, int playerCount) throws SlickException {
+        players.clear();
+        removeAllEntities();
+        Random rand = new Random();
+        Color[] colors = {Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.orange, Color.pink};
+
+        for (int i = 0; i < playerCount; i++) {
+            TagPlayer player = new TagPlayer(
+                    i == RL_PLAYER_INDEX ? RL_PLAYER_NAME : ("P" + (i + 1)),
+                    new StaticInfo(new Point2D(rand.nextDouble() * (TagGame.DemoWidth - 200), rand.nextDouble() * (TagGame.DemoHeight - 200))),
+                    colors[i % colors.length],
+                    this
+            );
+            player.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, MovingEntity.MAX_VELOCITY, player));
+            players.add(player);
+            add(player);
+        }
+        TagPlayer taggedPlayer = players.get(Utils.randomInt(players.size()));
+        setTag(taggedPlayer, taggedPlayer);
+        super.init(gameContainer, stateBasedGame);
+    }
+
+    @Override
+    public void init(GameContainer gameContainer, StateBasedGame stateBasedGame) throws SlickException {
+        resetGame(gameContainer, stateBasedGame, PLAYER_COUNT);
+        try {
+            communicator = new Communicator();
+        } catch (IOException e) {
+            throw new SlickException("Failed to initialize communicator.", e);
+        }
+        gameContainer.setTargetFrameRate(20);
+    }
+
+    @Override
+    public void update(GameContainer gameContainer, StateBasedGame stateBasedGame, int time) throws SlickException {
+        try {
+            String action = communicator.receiveAction();
+            if (action == null || action.equalsIgnoreCase(Communicator.EXIT)) return;
+
+            if (action.equals(Communicator.RESET)) {
+                resetGame(gameContainer, stateBasedGame, PLAYER_COUNT);
+            } else {
+                TagGameAction gameAction = deserializeAction(action);
+                applyAction(players.get(RL_PLAYER_INDEX), gameAction);
+            }
+
+            super.update(gameContainer, stateBasedGame, time);
+            boolean tagChanged = handleTaggingLogic();
+            sendSerializedGameState(players.get(RL_PLAYER_INDEX));
+
+            if(tagChanged) {
+                resetGame(gameContainer, stateBasedGame, PLAYER_COUNT);
+            }
+        } catch (IOException e) {
+            try {
+                communicator.close();
+                gameContainer.exit();
+            } catch (IOException ex) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public List<TagPlayer> getPlayers() {
         return players;
     }
 
-    public void addPlayer(TagPlayer player) {
-        players.add(player);
-        add(player);
+    private void applyAction(TagPlayer player, TagGameAction action) {
+        System.out.println("Applying action: " + action);
+//        player.applyAction(action.rot, action.speed);
     }
 
-    @Override
-    public void init(GameContainer gameContainer, StateBasedGame stateBasedGame) throws SlickException {
-        super.init(gameContainer, stateBasedGame);
-
-        state = TagGameState.WarmUp;
-        int tag = RandomUtils.randomInt(players.size());
-
-        setTag(players.get(tag), players.get(tag));
-    }
-
-    @Override
-    public void render(GameContainer gameContainer, StateBasedGame stateBasedGame, Graphics graphics) throws SlickException {
-        super.render(gameContainer, stateBasedGame, graphics);
-        renderScores(gameContainer, stateBasedGame, graphics);
-    }
-
-    private void renderScores(GameContainer gameContainer, StateBasedGame stateBasedGame, Graphics graphics) {
-        double x = width - FRAME_WIDTH - SCOREBOARD_WIDTH;
-        double y = FRAME_WIDTH;
-
-        for (TagPlayer player : players) {
-            graphics.setColor(player.getColor());
-            graphics.drawString(player.name + " : " + player.score(), (float) x, (float) y);
-            y += 20;
-        }
-    }
-
-    @Override
-    public void update(GameContainer gameContainer, StateBasedGame stateBasedGame, int time) throws SlickException {
-        super.update(gameContainer, stateBasedGame, time);
-
-        if (state == TagGameState.WarmUp) {
-            long now = System.currentTimeMillis();
-            if (now - tagChangeTime > TagWarmUpTime) {
-                players.forEach(TagPlayer::warmupFinished);
-                state = TagGameState.InPlay;
-            }
-        } else {
-            checkTagging();
-        }
-    }
-
-    private void checkTagging() {
-        for (TagPlayer player : players) {
-            if (player == tagPlayer)
-                continue;
-
-            if (tagPlayer.isTagging(player)) {
-                setTag(tagPlayer, player);
-                break;
-            }
-        }
-    }
-
-    private void setTag(TagPlayer oldTag, TagPlayer newTag) {
-        tagPlayer = newTag;
-        state = TagGameState.WarmUp;
-        tagChangeTime = System.currentTimeMillis();
-        players.forEach((p) -> p.tagChanged(oldTag, tagPlayer));
-    }
-
-    private Point2D toPoint(Vector2D v) {
-        return new Point2D(v.x(), v.y());
-    }
-
-    private int[] toIntArray(Point2D point) {
-        return new int[]{
-                (int) point.x(),
-                (int) point.y()
-        };
-    }
-
-    public String getGameStateAsString(TagPlayer me) {
+    private void sendSerializedGameState(TagPlayer me) {
         JSONObject gameState = new JSONObject();
 
-        gameState.put("myVelocity", toIntArray(toPoint(me.getVelocity())));
-        gameState.put("taggedVelocity", toIntArray(toPoint(tagPlayer.getVelocity())));
+        gameState.put("mv", Utils.toIntArray(Utils.toPoint(me.getVelocity())));
+        gameState.put("tv", Utils.toIntArray(Utils.toPoint(tagPlayer.getVelocity())));
 
         Point2D myPosition = me.getStaticInfo().getPos();
         Point2D taggedPosition = tagPlayer.getStaticInfo().getPos();
+        int distance = (int) taggedPosition.distance(myPosition);
 
-        int[] relativePosition = me.isTagged() ?
-                new int[]{0, 0} :
-                toIntArray(new Point2D(
-                        taggedPosition.getX() - myPosition.getX(),
-                        taggedPosition.getY() - myPosition.getY()
-                ));
+        gameState.put("d", distance);
+        gameState.put("tc", tagPlayer != oldTagPlayer);
 
-        gameState.put("relativePosition", relativePosition);
-
-        return gameState.toString();
+        String newState = gameState.toString();
+        System.out.println("Sending new state: " + newState);
+        communicator.sendState(newState);
     }
 
+    private TagGameAction deserializeAction(String s) {
+        JSONObject json = new JSONObject(s);
+        int angleDiff = json.getInt("a");
+        int speed = json.getInt("s");
+        return new TagGameAction(angleDiff, speed);
+    }
+
+    private boolean handleTaggingLogic() {
+        for (TagPlayer player : players) {
+            if (player != tagPlayer && tagPlayer.isTagging(player)) {
+                setTag(tagPlayer, player);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void setTag(TagPlayer oldPlayer, TagPlayer newPlayer) {
+        oldTagPlayer = oldPlayer;
+        tagPlayer = newPlayer;
+        players.forEach((p) -> p.setIsTagged(p == newPlayer));
+    }
 }

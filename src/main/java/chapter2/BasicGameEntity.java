@@ -31,8 +31,4 @@ public abstract class BasicGameEntity  implements GameEntity {
     public StaticInfo getStaticInfo() {
         return staticInfo;
     }
-
-    public Renderable getBody() {
-        return body;
-    }
 }
