@@ -20,17 +20,14 @@ public class TagPlayer {
     Vector2D velocity = noVelocity;
     SteeringBehaviour steeringBehaviour = idleSteering;
 
-
     protected String name;
-    protected TagArena arena;
     protected Color color;
     protected boolean isTagged;
 
-    public TagPlayer(String name, StaticInfo staticInfo, Color color, TagArena _arena) {
+    public TagPlayer(String name, StaticInfo staticInfo, Color color) {
         this.name = name;
         this.color = color;
         this.staticInfo = staticInfo;
-        arena = _arena;
     }
 
     public StaticInfo getStaticInfo() { return staticInfo; }
@@ -99,10 +96,6 @@ public class TagPlayer {
 
     public boolean isTagging(TagPlayer player) {
         return (PLAYER_RADIUS + PLAYER_RADIUS >= staticInfo.getPos().distance(player.staticInfo.getPos()));
-    }
-
-    TagArena getArena() {
-        return arena;
     }
 
     public void setIsTagged(boolean v) {

@@ -19,9 +19,10 @@ public class DumbTagSteering implements SteeringBehaviour {
 
     List<Point2D> corners;
     TagPlayer me;
+    TagArena arena;
     double maxVelocity;
 
-    public DumbTagSteering(int DemoWidth, int DemoHeight, double maxVelocity, TagPlayer _me) {
+    public DumbTagSteering(int DemoWidth, int DemoHeight, double maxVelocity, TagPlayer me, TagArena arena) {
         corners = new ArrayList<>() {{
             add(new Point2D(0, 0));
             add(new Point2D(0, DemoHeight));
@@ -34,7 +35,8 @@ public class DumbTagSteering implements SteeringBehaviour {
         cornerWeightMultiplier *= bottomLeftTopRightDistance;
         this.maxVelocity = maxVelocity;
 
-        me = _me;
+        this.me = me;
+        this.arena = arena;
     }
 
     @Override
@@ -42,7 +44,7 @@ public class DumbTagSteering implements SteeringBehaviour {
         Vector2D desiredVelocity = new Vector2D(0, 0);
         boolean isTagged = me.isTagged();
         Point2D myPosition = me.getStaticInfo().getPos();
-        ArrayList<TagPlayer> otherPlayers = me.getArena().getPlayers().stream()
+        ArrayList<TagPlayer> otherPlayers = arena.getPlayers().stream()
                 .filter(p -> p != me)
                 .collect(Collectors.toCollection(ArrayList::new));
 
