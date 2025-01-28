@@ -14,26 +14,23 @@ import java.util.stream.Collectors;
 public class DumbTagSteering implements SteeringBehaviour {
     double safeDistanceThreshold = 0.2;
     double chasingCornerDistanceThreshold = 0.2;
-    double cornerWeightMultiplier = 0.1;
-    double chasingPrioritizationDotProduct = 0.9;
+    double cornerWeightMultiplier = 0.3;
 
     List<Point2D> corners;
     TagPlayer me;
     TagArena arena;
-    double maxVelocity;
 
-    public DumbTagSteering(int DemoWidth, int DemoHeight, double maxVelocity, TagPlayer me, TagArena arena) {
+    public DumbTagSteering(TagPlayer me, TagArena arena) {
         corners = new ArrayList<>() {{
             add(new Point2D(0, 0));
-            add(new Point2D(0, DemoHeight));
-            add(new Point2D(DemoWidth, 0));
-            add(new Point2D(DemoWidth, DemoHeight));
+            add(new Point2D(0, TagGame.DemoHeight));
+            add(new Point2D(TagGame.DemoWidth, 0));
+            add(new Point2D(TagGame.DemoWidth, TagGame.DemoHeight));
         }};
-        final double bottomLeftTopRightDistance = Math.hypot(DemoWidth, DemoHeight);
+        final double bottomLeftTopRightDistance = Math.hypot(TagGame.DemoWidth, TagGame.DemoHeight);
         safeDistanceThreshold *= bottomLeftTopRightDistance;
         chasingCornerDistanceThreshold *= bottomLeftTopRightDistance;
         cornerWeightMultiplier *= bottomLeftTopRightDistance;
-        this.maxVelocity = maxVelocity;
 
         this.me = me;
         this.arena = arena;
@@ -51,32 +48,22 @@ public class DumbTagSteering implements SteeringBehaviour {
         if (isTagged) {
             // If the player is tagged, chase the closest opponent
             TagPlayer targetOpponent = null;
-            double closestVisibleDistance = Double.MAX_VALUE;
             double closestDistance = Double.MAX_VALUE;
-
-            Vector2D directionToFace = currentVelocity.normalize();
 
             for (TagPlayer opponent : otherPlayers) {
                 Point2D opponentPosition = opponent.getStaticInfo().getPos();
                 double distance = myPosition.distance(opponentPosition);
 
-                Vector2D toOpponent = new Vector2D(myPosition, opponentPosition).normalize();
-                double dotProduct = Vector2D.dot(directionToFace, toOpponent);
-                boolean isInView = dotProduct > chasingPrioritizationDotProduct;
-
                 double cornerWeight = Math.max(0, 1.0 - (opponentPosition.distance(getNearestCorner(opponent)) / chasingCornerDistanceThreshold));
 
-                if (isInView && distance < closestVisibleDistance) {
-                    closestVisibleDistance = distance;
-                    targetOpponent = opponent;
-                } else if (distance - cornerWeight * cornerWeightMultiplier < closestDistance) {
+                if (distance - cornerWeight * cornerWeightMultiplier < closestDistance) {
                     closestDistance = distance;
                     targetOpponent = opponent;
                 }
             }
 
             if (targetOpponent != null) {
-                desiredVelocity = new Vector2D(myPosition, targetOpponent.getStaticInfo().getPos()).normalize().times(maxVelocity);
+                desiredVelocity = new Vector2D(myPosition, targetOpponent.getStaticInfo().getPos()).normalize().times(TagGame.MAX_VELOCITY);
             }
         } else {
             // If not tagged, flee from the tagged opponent
@@ -95,7 +82,7 @@ public class DumbTagSteering implements SteeringBehaviour {
                 Vector2D fromMeToOpponent =  new Vector2D(myPosition, opponentPosition).normalize();
                 desiredVelocity = desiredDirection.times(seekWeight).plus(fromMeToOpponent.times(-fleeWeight));
 
-                desiredVelocity = desiredVelocity.normalize().times(maxVelocity);
+                desiredVelocity = desiredVelocity.normalize().times(TagGame.MAX_VELOCITY);
             }
         }
 

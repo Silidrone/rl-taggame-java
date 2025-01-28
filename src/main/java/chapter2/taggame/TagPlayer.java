@@ -5,9 +5,7 @@ import chapter2.*;
 import math.geom2d.Point2D;
 import math.geom2d.Vector2D;
 import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
-import org.newdawn.slick.state.StateBasedGame;
 
 public class TagPlayer {
     private static final float PLAYER_RADIUS = 20;
@@ -48,11 +46,12 @@ public class TagPlayer {
         this.steeringBehaviour = _steeringBehavior;
     }
 
-    public void update(GameContainer gameContainer, StateBasedGame stateBasedGame, float time) {
+    public void update(float time) {
         if (steeringBehaviour != null) {
             setVelocity(steeringBehaviour.getVelocity(staticInfo, velocity));
         }
 
+        // check boundaries
         if ((staticInfo.getPos().x() + PLAYER_RADIUS >= TagGame.DemoWidth && velocity.x() > 0)
                 || (staticInfo.getPos().x() - PLAYER_RADIUS <= 0 && velocity.x() < 0)) {
             velocity = new Vector2D(velocity.x() * -1, velocity.y());
@@ -64,7 +63,7 @@ public class TagPlayer {
         }
 
         time = time * TagGame.TIME_COEFFICIENT;
-
+        velocity = velocity.times(TagGame.VELOCITY_SCALING);
         staticInfo.update(velocity, time);
     }
 

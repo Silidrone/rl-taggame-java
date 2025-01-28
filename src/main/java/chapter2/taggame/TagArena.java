@@ -19,28 +19,17 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 public class TagArena extends BasicGameState {
-    private static final Color PanelColor = Color.decode("#222222");
-    private static final int PLAYER_COUNT = 5;
-    private static final double TAGGER_SLEEP_TIME_MS = 3000;
-    private final String RL_PLAYER_NAME = "Sili";
-    private final Color RL_PLAYER_COLOR = Color.blue;
+    private Communicator communicator;
 
     private List<TagPlayer> players;
     private TagPlayer tagPlayer;
-    private TagPlayer oldTagPlayer;
-    private Communicator communicator;
     private final int RL_PLAYER_INDEX = 0;
     private double tagChangedTime;
-    private int width;
-    private int height;
 
-    public TagArena(int width, int height) {
+    public TagArena() {
         super();
         this.players = new ArrayList<>();
-        this.oldTagPlayer = null;
         this.tagChangedTime = 0;
-        this.width = width;
-        this.height = height;
     }
 
     @Override
@@ -52,21 +41,21 @@ public class TagArena extends BasicGameState {
         players.clear();
         Random rand = new Random();
         ArrayList<Color> colors = new ArrayList<>(Arrays.asList(Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.orange, Color.pink));
-        colors = colors.stream().filter(color -> color != RL_PLAYER_COLOR).collect(Collectors.toCollection(ArrayList::new));
+        colors = colors.stream().filter(color -> color != TagGame.RL_PLAYER_COLOR).collect(Collectors.toCollection(ArrayList::new));
 
-        for (int i = 0; i < PLAYER_COUNT; i++) {
+        for (int i = 0; i < TagGame.PLAYER_COUNT; i++) {
             TagPlayer player = new TagPlayer(
-                    i == RL_PLAYER_INDEX ? RL_PLAYER_NAME : ("P" + (i + 1)),
+                    i == RL_PLAYER_INDEX ? TagGame.RL_PLAYER_NAME : ("P" + (i + 1)),
                     new StaticInfo(new Point2D(rand.nextDouble() * (TagGame.DemoWidth - 200), rand.nextDouble() * (TagGame.DemoHeight - 200))),
-                    i == RL_PLAYER_INDEX ? RL_PLAYER_COLOR : colors.get(i % colors.size())
+                    i == RL_PLAYER_INDEX ? TagGame.RL_PLAYER_COLOR : colors.get(i % colors.size())
             );
             if (i != RL_PLAYER_INDEX) {
-                player.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, TagGame.MAX_VELOCITY, player, this));
+                player.setSteeringBehavior(new DumbTagSteering(player, this));
             }
             players.add(player);
         }
-        TagPlayer taggedPlayer = players.get(Utils.randomInt(players.size()));
-        setTag(taggedPlayer, taggedPlayer);
+
+        setTag(players.get(Utils.randomInt(players.size())));
     }
 
     @Override
@@ -83,25 +72,25 @@ public class TagArena extends BasicGameState {
     @Override
     public void render(GameContainer gameContainer, StateBasedGame stateBasedGame, Graphics graphics) throws SlickException {
         graphics.clear();
-        graphics.setColor(PanelColor);
-        graphics.fillRect(0, 0, (float)width, (float)height);
+        graphics.setColor(TagGame.PanelColor);
+        graphics.fillRect(0, 0, (float) TagGame.DemoWidth, (float) TagGame.DemoHeight);
 
-        graphics.translate(0, (float) height);
+        graphics.translate(0, (float) TagGame.DemoHeight);
         graphics.scale(1, -1);
 
         players.forEach(e -> e.render(graphics));
 
         graphics.scale(1, -1);
-        graphics.translate(0, (float) -height);
+        graphics.translate(0, (float) -TagGame.DemoHeight);
     }
 
     @Override
     public void update(GameContainer gameContainer, StateBasedGame stateBasedGame, int time) throws SlickException {
         try {
-            boolean taggerSleeping = System.currentTimeMillis() - tagChangedTime < TAGGER_SLEEP_TIME_MS;
             TagPlayer RL_player = players.get(RL_PLAYER_INDEX);
 
-            if(tagPlayer != RL_player || !taggerSleeping) {
+            // RL control is only used when playing as a non-tag player (i.e. evader).
+            if (tagPlayer != RL_player) {
                 String action = communicator.receiveAction();
                 if (action == null || action.equalsIgnoreCase(Communicator.EXIT)) return;
 
@@ -112,16 +101,20 @@ public class TagArena extends BasicGameState {
                 }
             }
 
-            if(!taggerSleeping) {
-                tagPlayer.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, TagGame.MAX_VELOCITY, tagPlayer, this));
+            boolean taggerSleeping = System.currentTimeMillis() - tagChangedTime < TagGame.TAGGER_SLEEP_TIME_MS;
+            if (!taggerSleeping) {
+                tagPlayer.setSteeringBehavior(new DumbTagSteering(tagPlayer, this));
                 handleTaggingLogic();
             }
 
-            for(TagPlayer player : players) {
-                player.update(gameContainer, stateBasedGame, time);
+            for (TagPlayer player : players) {
+                player.update(time);
             }
 
-            sendSerializedGameState(players.get(RL_PLAYER_INDEX));
+            // RL control is only used when playing as a non-tag player (i.e. evader).
+            if (tagPlayer != RL_player) {
+                sendSerializedGameState(players.get(RL_PLAYER_INDEX));
+            }
         } catch (IOException e) {
             try {
                 communicator.close();
@@ -151,10 +144,13 @@ public class TagArena extends BasicGameState {
 
         Point2D myPosition = me.getStaticInfo().getPos();
         Point2D taggedPosition = tagPlayer.getStaticInfo().getPos();
-        int distance = (int) taggedPosition.distance(myPosition);
 
-        gameState.put("d", distance);
-        gameState.put("tc", tagPlayer != oldTagPlayer);
+        if (me == tagPlayer) {
+            gameState.put("d", 0);
+        } else {
+            int distance = (int) taggedPosition.distance(myPosition);
+            gameState.put("d", distance);
+        }
 
         String newState = gameState.toString();
         communicator.sendState(newState);
@@ -163,16 +159,18 @@ public class TagArena extends BasicGameState {
     private void handleTaggingLogic() {
         for (TagPlayer player : players) {
             if (player != tagPlayer && tagPlayer.isTagging(player)) {
-                setTag(tagPlayer, player);
+                setTag(player);
                 tagPlayer.setSteeringBehavior(TagPlayer.idleSteering);
                 tagChangedTime = System.currentTimeMillis();
+                if(tagPlayer == players.get(RL_PLAYER_INDEX)) {
+                    sendSerializedGameState(players.get(RL_PLAYER_INDEX));
+                }
                 return;
             }
         }
     }
 
-    private void setTag(TagPlayer oldPlayer, TagPlayer newPlayer) {
-        oldTagPlayer = oldPlayer;
+    private void setTag(TagPlayer newPlayer) {
         tagPlayer = newPlayer;
         players.forEach((p) -> p.setIsTagged(p == newPlayer));
     }
