@@ -2,6 +2,7 @@ package chapter2.taggame;
 
 import chapter2.*;
 import math.geom2d.Point2D;
+import math.geom2d.Vector2D;
 import org.json.JSONObject;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
@@ -59,9 +60,9 @@ public class TagArena extends BasicGameState {
                     new StaticInfo(new Point2D(rand.nextDouble() * (TagGame.DemoWidth - 200), rand.nextDouble() * (TagGame.DemoHeight - 200))),
                     i == RL_PLAYER_INDEX ? RL_PLAYER_COLOR : colors.get(i % colors.size())
             );
-//            if (i != RL_PLAYER_INDEX) {
+            if (i != RL_PLAYER_INDEX) {
                 player.setSteeringBehavior(new DumbTagSteering(TagGame.DemoWidth, TagGame.DemoHeight, TagGame.MAX_VELOCITY, player, this));
-//            }
+            }
             players.add(player);
         }
         TagPlayer taggedPlayer = players.get(Utils.randomInt(players.size()));
@@ -107,7 +108,7 @@ public class TagArena extends BasicGameState {
                 if (action.equals(Communicator.RESET)) {
                     initGame();
                 } else {
-//                    RL_player.setSteeringBehavior(new ActionSteering(new TagGameAction(action)));
+                    RL_player.setSteeringBehavior((StaticInfo staticInfo, Vector2D currentVelocity) -> deserializeAction(action));
                 }
             }
 
@@ -133,6 +134,13 @@ public class TagArena extends BasicGameState {
 
     public List<TagPlayer> getPlayers() {
         return players;
+    }
+
+    private Vector2D deserializeAction(String action) {
+        JSONObject json = new JSONObject(action);
+        double x = json.getInt("x");
+        double y = json.getInt("y");
+        return new Vector2D(x, y);
     }
 
     private void sendSerializedGameState(TagPlayer me) {
