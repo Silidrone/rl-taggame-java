@@ -22,10 +22,10 @@ public class Communicator {
     }
 
     public String receiveAction() throws IOException {
-        System.out.println("Waiting for action...");
+//        System.out.println("Waiting for action...");
         String action = in.readLine();
         if (action == null) {
-            System.out.println("Connection closed by client.");
+//            System.out.println("Connection closed by client.");
             throw new IOException("Connection closed by client.");
         }
         System.out.println("Received action: " + action);

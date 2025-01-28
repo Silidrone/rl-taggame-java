@@ -19,17 +19,21 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 public class TagArena extends BasicGameState {
-    private Communicator communicator;
+    private final int RL_PLAYER_INDEX = 0;
 
+    private Communicator communicator;
     private List<TagPlayer> players;
     private TagPlayer tagPlayer;
-    private final int RL_PLAYER_INDEX = 0;
     private double tagChangedTime;
+    private ArrayList<Color> colors;
 
     public TagArena() {
         super();
         this.players = new ArrayList<>();
         this.tagChangedTime = 0;
+        this.tagPlayer = null;
+        colors = new ArrayList<>(Arrays.asList(Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.orange, Color.pink));
+        colors = colors.stream().filter(color -> color != TagGame.RL_PLAYER_COLOR).collect(Collectors.toCollection(ArrayList::new));
     }
 
     @Override
@@ -39,9 +43,10 @@ public class TagArena extends BasicGameState {
 
     private void initGame() {
         players.clear();
+        tagPlayer = null;
+        this.tagChangedTime = 0;
+
         Random rand = new Random();
-        ArrayList<Color> colors = new ArrayList<>(Arrays.asList(Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.orange, Color.pink));
-        colors = colors.stream().filter(color -> color != TagGame.RL_PLAYER_COLOR).collect(Collectors.toCollection(ArrayList::new));
 
         for (int i = 0; i < TagGame.PLAYER_COUNT; i++) {
             TagPlayer player = new TagPlayer(
@@ -55,7 +60,16 @@ public class TagArena extends BasicGameState {
             players.add(player);
         }
 
-        setTag(players.get(Utils.randomInt(players.size())));
+        setTag(getRandomNonRLPlayer());
+    }
+
+    private TagPlayer getRandomNonRLPlayer() {
+        Random rand = new Random();
+        TagPlayer randomPlayer;
+        do {
+            randomPlayer = players.get(rand.nextInt(players.size()));
+        } while (players.indexOf(randomPlayer) == RL_PLAYER_INDEX);
+        return randomPlayer;
     }
 
     @Override
@@ -89,16 +103,13 @@ public class TagArena extends BasicGameState {
         try {
             TagPlayer RL_player = players.get(RL_PLAYER_INDEX);
 
-            // RL control is only used when playing as a non-tag player (i.e. evader).
-            if (tagPlayer != RL_player) {
-                String action = communicator.receiveAction();
-                if (action == null || action.equalsIgnoreCase(Communicator.EXIT)) return;
+            String action = communicator.receiveAction();
+            if (action == null || action.equalsIgnoreCase(Communicator.EXIT)) return;
 
-                if (action.equals(Communicator.RESET)) {
-                    initGame();
-                } else {
-                    RL_player.setSteeringBehavior((StaticInfo staticInfo, Vector2D currentVelocity) -> deserializeAction(action));
-                }
+            if (action.equals(Communicator.RESET)) {
+                initGame();
+            } else {
+                RL_player.setSteeringBehavior((StaticInfo staticInfo, Vector2D currentVelocity) -> deserializeAction(action));
             }
 
             boolean taggerSleeping = System.currentTimeMillis() - tagChangedTime < TagGame.TAGGER_SLEEP_TIME_MS;
@@ -111,10 +122,7 @@ public class TagArena extends BasicGameState {
                 player.update(time);
             }
 
-            // RL control is only used when playing as a non-tag player (i.e. evader).
-            if (tagPlayer != RL_player) {
-                sendSerializedGameState(players.get(RL_PLAYER_INDEX));
-            }
+            sendSerializedGameState(players.get(RL_PLAYER_INDEX));
         } catch (IOException e) {
             try {
                 communicator.close();
@@ -162,9 +170,6 @@ public class TagArena extends BasicGameState {
                 setTag(player);
                 tagPlayer.setSteeringBehavior(TagPlayer.idleSteering);
                 tagChangedTime = System.currentTimeMillis();
-                if(tagPlayer == players.get(RL_PLAYER_INDEX)) {
-                    sendSerializedGameState(players.get(RL_PLAYER_INDEX));
-                }
                 return;
             }
         }
