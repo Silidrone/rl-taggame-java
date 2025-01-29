@@ -147,8 +147,19 @@ public class TagArena extends BasicGameState {
     private void sendSerializedGameState(TagPlayer me) {
         JSONObject gameState = new JSONObject();
 
-        gameState.put("mv", Utils.toIntArray(Utils.toPoint(me.getVelocity())));
-        gameState.put("tv", Utils.toIntArray(Utils.toPoint(tagPlayer.getVelocity())));
+        var mv = Utils.toIntArray(Utils.toPoint(me.getVelocity()));
+        var tv = Utils.toIntArray(Utils.toPoint(tagPlayer.getVelocity()));
+
+        for(int i = 0; i < mv.length; i++) {
+            mv[i] /= TagGame.VELOCITY_SCALING;
+        }
+
+        for(int i = 0; i < tv.length; i++) {
+            tv[i] /= TagGame.VELOCITY_SCALING;
+        }
+
+        gameState.put("mv", mv);
+        gameState.put("tv", tv);
 
         Point2D myPosition = me.getStaticInfo().getPos();
         Point2D taggedPosition = tagPlayer.getStaticInfo().getPos();
