@@ -28,7 +28,7 @@ public class Communicator {
 //            System.out.println("Connection closed by client.");
             throw new IOException("Connection closed by client.");
         }
-        System.out.println("Received action: " + action);
+//        System.out.println("Received action: " + action);
         return action;
     }
 

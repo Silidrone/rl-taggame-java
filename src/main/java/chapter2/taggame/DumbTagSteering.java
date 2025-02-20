@@ -19,8 +19,9 @@ public class DumbTagSteering implements SteeringBehaviour {
     List<Point2D> corners;
     TagPlayer me;
     TagArena arena;
+    double maxVelocity;
 
-    public DumbTagSteering(TagPlayer me, TagArena arena) {
+    public DumbTagSteering(TagPlayer me, TagArena arena, double maxVelocity) {
         corners = new ArrayList<>() {{
             add(new Point2D(0, 0));
             add(new Point2D(0, TagGame.DemoHeight));
@@ -34,6 +35,11 @@ public class DumbTagSteering implements SteeringBehaviour {
 
         this.me = me;
         this.arena = arena;
+        this.maxVelocity = maxVelocity;
+    }
+
+    public DumbTagSteering(TagPlayer me, TagArena arena) {
+        this(me, arena, TagGame.MAX_VELOCITY);
     }
 
     @Override
@@ -63,7 +69,7 @@ public class DumbTagSteering implements SteeringBehaviour {
             }
 
             if (targetOpponent != null) {
-                desiredVelocity = new Vector2D(myPosition, targetOpponent.getStaticInfo().getPos()).normalize().times(TagGame.MAX_VELOCITY);
+                desiredVelocity = new Vector2D(myPosition, targetOpponent.getStaticInfo().getPos()).normalize().times(maxVelocity);
             }
         } else {
             // If not tagged, flee from the tagged opponent
@@ -82,7 +88,7 @@ public class DumbTagSteering implements SteeringBehaviour {
                 Vector2D fromMeToOpponent =  new Vector2D(myPosition, opponentPosition).normalize();
                 desiredVelocity = desiredDirection.times(seekWeight).plus(fromMeToOpponent.times(-fleeWeight));
 
-                desiredVelocity = desiredVelocity.normalize().times(TagGame.MAX_VELOCITY);
+                desiredVelocity = desiredVelocity.normalize().times(maxVelocity);
             }
         }
 

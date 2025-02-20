@@ -14,7 +14,10 @@ public class Utils {
     }
 
     public static int[] toIntArray(Point2D point) {
-        return new int[]{(int) point.x(), (int) point.y()};
+        return new int[]{
+                (int) (point.x() < 0 ? Math.floor(point.x()) : Math.ceil(point.x())),
+                (int) (point.y() < 0 ? Math.floor(point.y()) : Math.ceil(point.y()))
+        };
     }
 
     public static int randomInt(int size) {

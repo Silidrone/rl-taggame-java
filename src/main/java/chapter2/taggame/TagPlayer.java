@@ -8,9 +8,6 @@ import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
 
 public class TagPlayer {
-    private static final float PLAYER_RADIUS = 20;
-    private static final Color TAGCOLOR = Color.red;
-    private static final int TAG_PLAYER_RADIUS = 23;
     public final static Vector2D noVelocity = new Vector2D(0, 0);
     public final static SteeringBehaviour idleSteering = (staticInfo, currentVelocity) -> noVelocity;
 
@@ -52,18 +49,17 @@ public class TagPlayer {
         }
 
         // check boundaries
-        if ((staticInfo.getPos().x() + PLAYER_RADIUS >= TagGame.DemoWidth && velocity.x() > 0)
-                || (staticInfo.getPos().x() - PLAYER_RADIUS <= 0 && velocity.x() < 0)) {
+        if ((staticInfo.getPos().x() + TagGame.PLAYER_RADIUS >= TagGame.DemoWidth && velocity.x() > 0)
+                || (staticInfo.getPos().x() - TagGame.PLAYER_RADIUS <= 0 && velocity.x() < 0)) {
             velocity = new Vector2D(velocity.x() * -1, velocity.y());
         }
 
-        if ((staticInfo.getPos().y() + PLAYER_RADIUS >= TagGame.DemoHeight && velocity.y() > 0)
-                || (staticInfo.getPos().y() - PLAYER_RADIUS <= 0 && velocity.y() < 0)) {
+        if ((staticInfo.getPos().y() + TagGame.PLAYER_RADIUS >= TagGame.DemoHeight && velocity.y() > 0)
+                || (staticInfo.getPos().y() - TagGame.PLAYER_RADIUS <= 0 && velocity.y() < 0)) {
             velocity = new Vector2D(velocity.x(), velocity.y() * -1);
         }
 
         time = time * TagGame.TIME_COEFFICIENT;
-        velocity = velocity.times(TagGame.VELOCITY_SCALING);
         staticInfo.update(velocity, time);
     }
 
@@ -73,20 +69,20 @@ public class TagPlayer {
         double orientation = staticInfo.getOrientation();
 
         graphics.setColor(color);
-        graphics.fillOval( (float)pos.x()-PLAYER_RADIUS, (float) pos.y()-PLAYER_RADIUS, 2*PLAYER_RADIUS,2*PLAYER_RADIUS);
+        graphics.fillOval( (float)pos.x()-TagGame.PLAYER_RADIUS, (float) pos.y()-TagGame.PLAYER_RADIUS, 2*TagGame.PLAYER_RADIUS,2*TagGame.PLAYER_RADIUS);
         float x = (float)pos.x();
         float y = (float) pos.y();
-        float ex = (float) (x + PLAYER_RADIUS*Math.cos(orientation));
-        float ey = (float) (y + PLAYER_RADIUS*Math.sin(orientation));
+        float ex = (float) (x + TagGame.PLAYER_RADIUS*Math.cos(orientation));
+        float ey = (float) (y + TagGame.PLAYER_RADIUS*Math.sin(orientation));
         graphics.setColor(Color.black);
         graphics.drawLine(x,y,ex,ey);
         graphics.setColor(c);
 
         if (isTagged) {
             Point2D center = staticInfo.getPos();
-            graphics.setColor(TAGCOLOR);
+            graphics.setColor(TagGame.TAGCOLOR);
             graphics.setLineWidth(20);
-            graphics.drawOval((float) center.x() - TAG_PLAYER_RADIUS, (float) center.y() - TAG_PLAYER_RADIUS, 2 * TAG_PLAYER_RADIUS, 2 * TAG_PLAYER_RADIUS);
+            graphics.drawOval((float) center.x() - TagGame.TAG_PLAYER_RADIUS, (float) center.y() - TagGame.TAG_PLAYER_RADIUS, 2 * TagGame.TAG_PLAYER_RADIUS, 2 * TagGame.TAG_PLAYER_RADIUS);
             graphics.setLineWidth(1);
         }
 
@@ -94,7 +90,7 @@ public class TagPlayer {
     }
 
     public boolean isTagging(TagPlayer player) {
-        return (PLAYER_RADIUS + PLAYER_RADIUS >= staticInfo.getPos().distance(player.staticInfo.getPos()));
+        return (TagGame.PLAYER_RADIUS + TagGame.PLAYER_RADIUS >= staticInfo.getPos().distance(player.staticInfo.getPos()));
     }
 
     public void setIsTagged(boolean v) {

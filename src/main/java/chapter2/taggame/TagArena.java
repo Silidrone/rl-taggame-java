@@ -51,12 +51,9 @@ public class TagArena extends BasicGameState {
         for (int i = 0; i < TagGame.PLAYER_COUNT; i++) {
             TagPlayer player = new TagPlayer(
                     i == RL_PLAYER_INDEX ? TagGame.RL_PLAYER_NAME : ("P" + (i + 1)),
-                    new StaticInfo(new Point2D(rand.nextDouble() * (TagGame.DemoWidth - 200), rand.nextDouble() * (TagGame.DemoHeight - 200))),
+                    new StaticInfo(new Point2D(rand.nextDouble() * (TagGame.DemoWidth), rand.nextDouble() * (TagGame.DemoHeight))),
                     i == RL_PLAYER_INDEX ? TagGame.RL_PLAYER_COLOR : colors.get(i % colors.size())
             );
-            if (i != RL_PLAYER_INDEX) {
-                player.setSteeringBehavior(new DumbTagSteering(player, this));
-            }
             players.add(player);
         }
 
@@ -109,12 +106,13 @@ public class TagArena extends BasicGameState {
             if (action.equals(Communicator.RESET)) {
                 initGame();
             } else {
-                RL_player.setSteeringBehavior((StaticInfo staticInfo, Vector2D currentVelocity) -> deserializeAction(action));
+                RL_player.setSteeringBehavior((StaticInfo staticInfo, Vector2D currentVelocity) ->
+                        deserializeAction(action).times(TagGame.MAX_VELOCITY));
             }
 
             boolean taggerSleeping = System.currentTimeMillis() - tagChangedTime < TagGame.TAGGER_SLEEP_TIME_MS;
             if (!taggerSleeping) {
-                tagPlayer.setSteeringBehavior(new DumbTagSteering(tagPlayer, this));
+                tagPlayer.setSteeringBehavior(new DumbTagSteering(tagPlayer, this, (double) TagGame.MAX_VELOCITY * 0.7));
                 handleTaggingLogic();
             }
 
@@ -144,19 +142,15 @@ public class TagArena extends BasicGameState {
         return new Vector2D(x, y);
     }
 
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
     private void sendSerializedGameState(TagPlayer me) {
         JSONObject gameState = new JSONObject();
 
-        var mv = Utils.toIntArray(Utils.toPoint(me.getVelocity()));
-        var tv = Utils.toIntArray(Utils.toPoint(tagPlayer.getVelocity()));
-
-        for(int i = 0; i < mv.length; i++) {
-            mv[i] /= TagGame.VELOCITY_SCALING;
-        }
-
-        for(int i = 0; i < tv.length; i++) {
-            tv[i] /= TagGame.VELOCITY_SCALING;
-        }
+        var mv = Utils.toIntArray(Utils.toPoint(me.getVelocity().normalize()));
+        var tv = Utils.toIntArray(Utils.toPoint(tagPlayer.getVelocity().normalize()));
 
         gameState.put("mv", mv);
         gameState.put("tv", tv);
@@ -167,11 +161,15 @@ public class TagArena extends BasicGameState {
         if (me == tagPlayer) {
             gameState.put("d", 0);
         } else {
-            int distance = (int) taggedPosition.distance(myPosition);
-            gameState.put("d", distance);
+            double distance = taggedPosition.distance(myPosition);
+            int bin_size = (int) ((TagGame.getMaxDistance() / TagGame.DISTANCE_LEVEL_COUNT));
+            long discretized_distance = Math.round(this.clamp((distance / bin_size), 1, TagGame.DISTANCE_LEVEL_COUNT - 1));
+
+            gameState.put("d", discretized_distance);
         }
 
         String newState = gameState.toString();
+//        System.out.println("Sending: " + newState);
         communicator.sendState(newState);
     }
 
