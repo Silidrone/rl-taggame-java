@@ -112,7 +112,7 @@ public class TagArena extends BasicGameState {
 
             boolean taggerSleeping = System.currentTimeMillis() - tagChangedTime < TagGame.TAGGER_SLEEP_TIME_MS;
             if (!taggerSleeping) {
-                tagPlayer.setSteeringBehavior(new DumbTagSteering(tagPlayer, this, (double) TagGame.MAX_VELOCITY * 0.7));
+                tagPlayer.setSteeringBehavior(new DumbTagSteering(tagPlayer, this, (double) TagGame.MAX_VELOCITY * 0.5));
                 handleTaggingLogic();
             }
 
@@ -162,14 +162,16 @@ public class TagArena extends BasicGameState {
             gameState.put("d", 0);
         } else {
             double distance = taggedPosition.distance(myPosition);
-            int bin_size = (int) ((TagGame.getMaxDistance() / TagGame.DISTANCE_LEVEL_COUNT));
+            int bin_size = (int) ((TagGame.getMaxDistance() / (TagGame.DISTANCE_LEVEL_COUNT - 1)));
             long discretized_distance = Math.round(this.clamp((distance / bin_size), 1, TagGame.DISTANCE_LEVEL_COUNT - 1));
 
             gameState.put("d", discretized_distance);
         }
 
+        gameState.put("tw", TagGame.isTouchingWall(me) ? "1" : "0");
+
         String newState = gameState.toString();
-//        System.out.println("Sending: " + newState);
+        System.out.println("Sending: " + newState);
         communicator.sendState(newState);
     }
 
