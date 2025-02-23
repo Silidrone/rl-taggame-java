@@ -1,11 +1,11 @@
-package chapter2;
+package taggame;
 
 import math.geom2d.Vector2D;
 import math.geom2d.Point2D;
 
 public class StaticInfo {
-    Point2D pos;
-    double orientation;
+    protected Point2D pos;
+    protected double orientation;
 
     public StaticInfo(Point2D pos) {
         this.pos = pos;

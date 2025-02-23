@@ -1,4 +1,4 @@
-package chapter2;
+package taggame;
 
 import java.io.*;
 import java.net.*;
@@ -6,11 +6,11 @@ import java.net.*;
 public class Communicator {
     public static final String RESET = "reset";
     public static final String EXIT = "exit";
-    private static final int SERVER_PORT = 12345;
-    private final ServerSocket serverSocket;
-    private final Socket clientSocket;
-    private final BufferedReader in;
-    private final PrintWriter out;
+    protected static final int SERVER_PORT = 12345;
+    protected final ServerSocket serverSocket;
+    protected final Socket clientSocket;
+    protected final BufferedReader in;
+    protected final PrintWriter out;
 
     public Communicator() throws IOException {
         serverSocket = new ServerSocket(SERVER_PORT);
@@ -28,7 +28,7 @@ public class Communicator {
 //            System.out.println("Connection closed by client.");
             throw new IOException("Connection closed by client.");
         }
-//        System.out.println("Received action: " + action);
+        System.out.println("Received action: " + action);
         return action;
     }
 

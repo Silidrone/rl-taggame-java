@@ -1,7 +1,5 @@
-package chapter2.taggame;
+package taggame;
 
-import chapter2.StaticInfo;
-import chapter2.SteeringBehaviour;
 import math.geom2d.Point2D;
 import math.geom2d.Vector2D;
 
@@ -18,17 +16,17 @@ public class DumbTagSteering implements SteeringBehaviour {
 
     List<Point2D> corners;
     TagPlayer me;
-    TagArena arena;
-    double maxVelocity;
+    TagGame arena;
+    float maxVelocity;
 
-    public DumbTagSteering(TagPlayer me, TagArena arena, double maxVelocity) {
+    public DumbTagSteering(TagPlayer me, TagGame arena, int width, int height, float maxVelocity) {
         corners = new ArrayList<>() {{
             add(new Point2D(0, 0));
-            add(new Point2D(0, TagGame.DemoHeight));
-            add(new Point2D(TagGame.DemoWidth, 0));
-            add(new Point2D(TagGame.DemoWidth, TagGame.DemoHeight));
+            add(new Point2D(0, height));
+            add(new Point2D(width, 0));
+            add(new Point2D(width, height));
         }};
-        final double bottomLeftTopRightDistance = Math.hypot(TagGame.DemoWidth, TagGame.DemoHeight);
+        final double bottomLeftTopRightDistance = Math.hypot(width, height);
         safeDistanceThreshold *= bottomLeftTopRightDistance;
         chasingCornerDistanceThreshold *= bottomLeftTopRightDistance;
         cornerWeightMultiplier *= bottomLeftTopRightDistance;
@@ -36,10 +34,6 @@ public class DumbTagSteering implements SteeringBehaviour {
         this.me = me;
         this.arena = arena;
         this.maxVelocity = maxVelocity;
-    }
-
-    public DumbTagSteering(TagPlayer me, TagArena arena) {
-        this(me, arena, TagGame.MAX_VELOCITY);
     }
 
     @Override
@@ -95,11 +89,11 @@ public class DumbTagSteering implements SteeringBehaviour {
         return desiredVelocity;
     }
 
-    private Point2D getNearestCorner(TagPlayer player) {
+    protected Point2D getNearestCorner(TagPlayer player) {
         return orderCornersByDistance(player).get(0).getKey();
     }
 
-    private List<SimpleEntry<Point2D, Double>> orderCornersByDistance(TagPlayer player) {
+    protected List<SimpleEntry<Point2D, Double>> orderCornersByDistance(TagPlayer player) {
         List<SimpleEntry<Point2D, Double>> distanceEntries = new ArrayList<>();
 
         for (Point2D corner : corners) {

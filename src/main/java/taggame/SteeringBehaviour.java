@@ -1,4 +1,4 @@
-package chapter2;
+package taggame;
 
 import math.geom2d.Vector2D;
 
