@@ -75,6 +75,15 @@ public class TagGame {
         }
 
         setTag(getRandomNonRLPlayer());
+
+        boolean invalidReset = false;
+        for(TagPlayer player : players) {
+            if(player != tagPlayer && tagPlayer.isTagging(player)) invalidReset = true;
+        }
+
+        if(invalidReset) {
+            initGame();
+        }
     }
 
     public void updateGame(int time) throws RuntimeException {
@@ -101,7 +110,7 @@ public class TagGame {
                 player.update(time * this.time_coefficient);
             }
 
-            sendSerializedGameState(players.get(RL_PLAYER_INDEX));
+            communicator.sendState(getSerializedGameState(players.get(RL_PLAYER_INDEX)).toString());
         } catch (IOException e) {
             try {
                 communicator.close();
@@ -135,7 +144,7 @@ public class TagGame {
         return new Vector2D(x, y);
     }
 
-    protected void sendSerializedGameState(TagPlayer me) {
+    protected JSONObject getSerializedGameState(TagPlayer me) {
         JSONObject gameState = new JSONObject();
 
         var mv = Utils.toIntArray(Utils.toPoint(me.getVelocity().normalize()));
@@ -153,13 +162,10 @@ public class TagGame {
             double distance = taggedPosition.distance(myPosition);
             int bin_size = (int) ((maxDistance / (this.distance_level_count - 1)));
             long discretized_distance = Math.round(Utils.clamp((distance / bin_size), 1, this.distance_level_count - 1));
-
             gameState.put("d", discretized_distance);
         }
 
-        String newState = gameState.toString();
-        System.out.println("Sending: " + newState);
-        communicator.sendState(newState);
+        return gameState;
     }
 
     protected void handleTaggingLogic() {

@@ -8,12 +8,12 @@ import org.newdawn.slick.util.Bootstrap;
 public class SlickGraphicsRunner extends StateBasedGame  {
     protected static final int WIDTH = 1000;
     protected static final int HEIGHT = 1000;
-    protected static final int FRAME_RATE = 4000;
+    protected static final int FRAME_RATE = 60;
     protected static final float PLAYER_RADIUS = 20;
     protected static final Color TAG_COLOR = Color.red;
-    protected static final int DISTANCE_LEVEL_COUNT = 4;
+    protected static final int DISTANCE_LEVEL_COUNT = 3;
     protected static final int TAGGER_SLEEP_TIME_MS = 1000;
-    protected static final float MAX_VELOCITY = 5;
+    protected static final float MAX_VELOCITY = 1;
     protected static final int PLAYER_COUNT = 2;
     protected final static float TIME_COEFFICIENT = 1f;
     protected static final String RL_PLAYER_NAME = "Sili";
